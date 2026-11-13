@@ -23,7 +23,7 @@ The executable runs the following pipeline:
 
 1. **Parsing and SSA conversion** (`parse.cpp`)
    - Reads arithmetic assignments such as `X = A + B`, only `+`, `-`, and `*` are supported.
-   - Renames repeated assignments and intermediate values using digits to create SSA forms, such as `X0 = A0 + B0`.
+   - Renames repeated assignments and intermediate values using digits to create SSA forms, such as `X0 = A0 + B0`. The right-hand side always reads the previous version of a name, so `A = A + B` becomes `A1 = A0 + B0`.
    - Tracks the available number of `+`, `-`, and `*` resources defined by the user.
 
 2. **Dependency graph construction** (`schedule.cpp`)

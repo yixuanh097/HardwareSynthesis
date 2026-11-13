@@ -86,36 +86,20 @@ vector<struct node> ssa(string filename, bool write, vector<int> &resource)
     {
         if (extract_variable(line, lhs, in1, in2, op) == 0)
         {
-            if (variables.find(lhs) == variables.end())
-            {
-                // new variable
-                variables[lhs] = 0;
-            }
-            else
-            {
+            // operands first, so X = X + 1 reads the X from before this line. A name not
+            // seen yet is a primary input or a constant and gets version 0, so assigning
+            // it later makes A1 rather than a second A0.
+            variables.emplace(in1, 0);
+            in1 += to_string(variables[in1]);
+            variables.emplace(in2, 0);
+            in2 += to_string(variables[in2]);
+
+            // then the result: version 0 for a new name, the next version otherwise
+            if(variables.count(lhs))
                 variables[lhs]++;
-            }
+            else
+                variables[lhs] = 0;
             lhs += to_string(variables[lhs]);
-            if (variables.find(in1) == variables.end())
-            {
-                // in1 is an overall input
-                in1 += "0";
-            }
-            else
-            {
-                // intermediate node
-                in1 += to_string(variables[in1]);
-            }
-            if (variables.find(in2) == variables.end())
-            {
-                // in1 is an overall input
-                in2 += "0";
-            }
-            else
-            {
-                // intermediate node
-                in2 += to_string(variables[in2]);
-            }
 
             if (write)
             {
