@@ -1,5 +1,3 @@
-CC = g++
-CFLAGS = -Wall -Wextra -O2
 CXXFLAGS = -std=c++23
 
 TARGET = main
@@ -10,10 +8,10 @@ OBJS     := $(SRCS:.cpp=.o)
 all: $(TARGET)
 
 $(TARGET): $(OBJS)
-	$(CC) $(OBJS) -o $(TARGET)
+	$(CXX) $(OBJS) -o $(TARGET)
 
-%.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
+%.o: %.cpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 clean:
 	rm -f $(TARGET) *.o
