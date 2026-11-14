@@ -228,3 +228,5 @@ The same example with A = 7 and B = 4 loaded in step 6 (only the listed switches
 | 28-30 | Questions |
 
 Each run: the professor writes the equations and picks a schedule type, and the code is run on the board.
+
+NB: AI was used for concept understanding, drafting the code, error-checking the code, and setup of code runtimes.
