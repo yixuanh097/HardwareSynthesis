@@ -135,7 +135,7 @@ Simulate the example under Input format after `./main input.txt --verilog asap`:
 iverilog -o tb.vvp hdl/testbench.v generated/hls_core.v hdl/fu.v && vvp tb.vvp
 ```
 
-`hdl/testbench.v` is a fixed file, not written by `./main`. It checks every operation's result on its unit in its cycle for that example and schedule, with the hardcoded inputs and with two input sets loaded the way the switches load them, and that idle units, a unit number with no unit and the finished run report idle, which the board shows as --. Other equations or schedules need its checks rewritten: `./main` prints the cycle, unit and expected value of every operation for the hardcoded inputs.
+`hdl/testbench.v` is a fixed file, not written by `./main`. It checks every operation's result on its unit in its cycle for that example and schedule, with the hardcoded inputs and with two input sets loaded the way the switches load them, and that idle units, a unit number with no unit and the finished run report idle, which the board shows as --. Other equations or schedules need its checks rewritten: `./main` prints the cycle, unit, expected value and equation of every operation for the hardcoded inputs.
 
 Compile with Quartus Prime Lite, which runs on Linux or Windows but not macOS:
 
@@ -178,7 +178,7 @@ Load inputs after KEY4 and before the first KEY0, since KEY4 restores the hardco
 3. Note from the end of its output:
    - `SW[4:0] unit:`, the SW4-SW0 number of each unit, for example `0=add0 1=sub0 2=mul0`
    - `SW[9:6] input:`, the SW9-SW6 number of each input, for example `0=A0 1=B0`
-   - the expected outputs, one line per operation, for example `cycle 1, unit 1: Z0 = 02`
+   - the expected outputs, one line per operation with its equation, for example `cycle 1, unit 1: Z0 = 02, Z0 = X0 - B0`
 4. Compile, convert, copy, and flash with the commands above.
 5. Put every switch down and press KEY4. HEX3-HEX2 show 00.
 6. Optional: for each input to change, set SW9-SW6 to its number and SW5-SW0 to its value, then press KEY1. Work out the new expected outputs by hand.

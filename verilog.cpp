@@ -194,9 +194,17 @@ void write_verilog(vector<struct node> dag, map<int, int> schedule, vector<struc
         cout << " " << inputs[k] << "=" << defaults[k];
     cout << endl;
     vector<int> value = evaluate(defaults);
+    // an operand as the equation shows it: its SSA name, or a constant's value without the digit SSA appends
+    auto operand_name = [&](int i, int s){
+        const operand &o = ops[i][s];
+        if(o.node < 0 && o.input < 0)
+            return to_string(o.value);
+        return s == 0 ? dag[i].in1 : dag[i].in2;
+    };
     for (int c = 0; c < cycles; c++)
         for (int i = 0; i < n; i++)
             if (schedule[i] == c)
-                printf("cycle %d, unit %d: %s = %02X\n", c, unit_of(i), dag[i].out.c_str(), value[i]);
+                printf("cycle %d, unit %d: %s = %02X, %s = %s %s %s\n", c, unit_of(i), dag[i].out.c_str(), value[i],
+                       dag[i].out.c_str(), operand_name(i, 0).c_str(), dag[i].op.c_str(), operand_name(i, 1).c_str());
     cout << "units not listed for a cycle show --" << endl;
 }
