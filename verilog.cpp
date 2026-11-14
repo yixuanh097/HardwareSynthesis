@@ -113,7 +113,9 @@ void write_verilog(vector<struct node> dag, map<int, int> schedule, vector<struc
          "    input [7:0] ld_val,\n"
          "    input [4:0] fu_sel,   // functional unit shown on fu_out\n"
          "    output reg [4:0] cyc, // control step, "
-      << cycles << " = done\n    output reg [7:0] fu_out\n);\n";
+      << cycles << " = done\n"
+         "    output reg [7:0] fu_out,\n"
+         "    output fu_busy        // the unit on fu_out computes something in this control step\n);\n";
     for (size_t k = 0; k < inputs.size(); k++)
         v << "    reg [7:0] in" << k << " = 8'd" << defaults[k] << "; // " << inputs[k] << "\n";
     for (size_t r = 0; r < reg_list.size(); r++)
@@ -123,26 +125,28 @@ void write_verilog(vector<struct node> dag, map<int, int> schedule, vector<struc
     for (string u : units)
         operands += (operands.empty() ? "" : ", ") + u + "_a, " + u + "_b";
     v << "    reg [7:0] " << operands << ";\n";
+    // one bit per fu_sel value, so a number with no unit reads as idle
+    v << "    reg [31:0] busy; // bit u: unit u computes something in this control step\n";
     for (size_t u = 0; u < units.size(); u++)
         v << "    wire [7:0] " << units[u] << "_y;\n    " << mods[u] << " u_" << units[u] << " (" << units[u] << "_a, "
           << units[u] << "_b, " << units[u] << "_y);\n";
 
     v << "\n    // multiplexers: the operands of every unit in the current control step\n    always @* begin\n        {"
-      << operands << "} = 0;\n        case (cyc)\n";
+      << operands << "} = 0;\n        busy = 0;\n        case (cyc)\n";
     for (int c = 0; c < cycles; c++)
     {
         v << "            " << c << ": begin\n";
         for (int i = 0; i < n; i++)
             if (schedule[i] == c)
                 v << "                " << units[unit_of(i)] << "_a = " << ops[i][0].expr << "; " << units[unit_of(i)]
-                  << "_b = " << ops[i][1].expr << "; // " << dag[i].out << " = " << dag[i].in1 << " " << dag[i].op
-                  << " " << dag[i].in2 << "\n";
+                  << "_b = " << ops[i][1].expr << "; busy[" << unit_of(i) << "] = 1; // " << dag[i].out << " = "
+                  << dag[i].in1 << " " << dag[i].op << " " << dag[i].in2 << "\n";
         v << "            end\n";
     }
     v << "        endcase\n    end\n\n    always @*\n        case (fu_sel)\n";
     for (size_t u = 0; u < units.size(); u++)
         v << "            " << u << ": fu_out = " << units[u] << "_y;\n";
-    v << "            default: fu_out = 0;\n        endcase\n\n"
+    v << "            default: fu_out = 0;\n        endcase\n    assign fu_busy = busy[fu_sel];\n\n"
          "    // sequencer: each step ends a control step and loads the registers enabled then\n"
          "    always @(posedge clk)\n        if (rst) begin\n            cyc <= 0;\n";
     for (size_t k = 0; k < inputs.size(); k++)
@@ -194,4 +198,5 @@ void write_verilog(vector<struct node> dag, map<int, int> schedule, vector<struc
         for (int i = 0; i < n; i++)
             if (schedule[i] == c)
                 printf("cycle %d, unit %d: %s = %02X\n", c, unit_of(i), dag[i].out.c_str(), value[i]);
+    cout << "units not listed for a cycle show --" << endl;
 }

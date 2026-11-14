@@ -1,7 +1,7 @@
 // Terasic C5G top level
 //   KEY[0] step one control step         KEY[1] load SW[5:0] into input SW[9:6]
 //   SW[4:0] unit shown on HEX1-HEX0      CPU_RESET_n restart with the hardcoded inputs
-//   HEX3-HEX2 control step, HEX1-HEX0 unit output (hex)
+//   HEX3-HEX2 control step, HEX1-HEX0 unit output (hex), -- when the unit computes nothing this step
 module top (
     input CLOCK_50_B5B, CPU_RESET_n,
     input [1:0] KEY,
@@ -23,8 +23,10 @@ module top (
 
     wire [4:0] cyc;
     wire [7:0] fu_out;
+    wire fu_busy;
     hls_core core (.clk(CLOCK_50_B5B), .rst(rst), .step(t == 1 && k0 == 2'b01), .ld(t == 1 && k1 == 2'b01),
-                   .ld_sel(SW[9:6]), .ld_val({2'b00, SW[5:0]}), .fu_sel(SW[4:0]), .cyc(cyc), .fu_out(fu_out));
+                   .ld_sel(SW[9:6]), .ld_val({2'b00, SW[5:0]}), .fu_sel(SW[4:0]), .cyc(cyc), .fu_out(fu_out),
+                   .fu_busy(fu_busy));
 
     // hex digit -> segments, active low, bit 0 = segment a
     function [6:0] seg(input [3:0] h);
@@ -36,8 +38,9 @@ module top (
         endcase
     endfunction
 
-    assign HEX0 = seg(fu_out[3:0]);
-    assign HEX1 = seg(fu_out[7:4]);
+    // -- (segment g only) when the selected unit computes nothing this step or does not exist
+    assign HEX0 = fu_busy ? seg(fu_out[3:0]) : 7'h3F;
+    assign HEX1 = fu_busy ? seg(fu_out[7:4]) : 7'h3F;
     assign HEX2 = seg(cyc[3:0]);
     assign HEX3 = seg({3'b000, cyc[4]});
 endmodule

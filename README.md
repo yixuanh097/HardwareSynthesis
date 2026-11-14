@@ -127,7 +127,7 @@ The program prints:
 
 This writes `generated/hls_core.v`, the synthesized design: a control-step counter (the sequencer), one operand multiplexer per functional unit, the task-4 registers, and exactly the adders, subtractors and multipliers the schedule uses. It also prints the unit numbers and the expected unit outputs for the hardcoded inputs.
 
-The datapath is 8 bits: two hex digits show a value, and results wrap modulo 256. Inputs start at hardcoded values (2, 3, 4, ... in order of first use); the first sixteen can be changed from the switches with 6-bit values (0-63), which leaves four switches to pick the input. Each value shows on its unit during the cycle that computes it.
+The datapath is 8 bits: two hex digits show a value, and results wrap modulo 256. Inputs start at hardcoded values (2, 3, 4, ... in order of first use); the first sixteen can be changed from the switches with 6-bit values (0-63), which leaves four switches to pick the input. Each value shows on its unit during the cycle that computes it; a unit with nothing to compute, a unit number with no unit, and every unit after the last cycle show --.
 
 Simulate the example under Input format after `./main input.txt --verilog asap`:
 
@@ -135,7 +135,7 @@ Simulate the example under Input format after `./main input.txt --verilog asap`:
 iverilog -o tb.vvp hdl/testbench.v generated/hls_core.v hdl/fu.v && vvp tb.vvp
 ```
 
-`hdl/testbench.v` is a fixed file, not written by `./main`. It checks every operation's result on its unit in its cycle for that example and schedule, with the hardcoded inputs and with two input sets loaded the way the switches load them. Other equations or schedules need its checks rewritten: `./main` prints the cycle, unit and expected value of every operation for the hardcoded inputs.
+`hdl/testbench.v` is a fixed file, not written by `./main`. It checks every operation's result on its unit in its cycle for that example and schedule, with the hardcoded inputs and with two input sets loaded the way the switches load them, and that idle units, a unit number with no unit and the finished run report idle, which the board shows as --. Other equations or schedules need its checks rewritten: `./main` prints the cycle, unit and expected value of every operation for the hardcoded inputs.
 
 Compile with Quartus Prime Lite, which runs on Linux or Windows but not macOS:
 
@@ -165,7 +165,7 @@ Each switch is 0 when down (toward the edge of the board) and 1 when up. A group
 | KEY4 (CPU_RESET_n) | back to cycle 0 with the hardcoded inputs |
 | SW4-SW0 | number of the unit shown on HEX1-HEX0 |
 | HEX3-HEX2 | current cycle |
-| HEX1-HEX0 | output of the selected unit in hex; 00 if it computes nothing this cycle |
+| HEX1-HEX0 | output of the selected unit in hex; -- if it computes nothing this cycle or there is no such unit |
 
 ### Checklist for running equations on the board
 
@@ -183,11 +183,11 @@ Load inputs after KEY4 and before the first KEY0, since KEY4 restores the hardco
 5. Put every switch down and press KEY4. HEX3-HEX2 show 00.
 6. Optional: for each input to change, set SW9-SW6 to its number and SW5-SW0 to its value, then press KEY1. Work out the new expected outputs by hand.
 7. For each expected output of the current cycle, set SW4-SW0 to its unit number and check HEX1-HEX0.
-8. Press KEY0 and repeat step 7 for the next cycle. One press after the last expected cycle ends the run, and every unit then shows 00.
+8. Press KEY0 and repeat step 7 for the next cycle. One press after the last expected cycle ends the run, and every unit then shows --.
 
 # Runtime steps
 
-1. Set SW9–SW6 to the input number and SW5–SW0 to the value. The display will show some other unit, or 00, while you do this. Ignore it.
+1. Set SW9–SW6 to the input number and SW5–SW0 to the value. The display will show some other unit, or --, while you do this. Ignore it.
 2. Press KEY1. The value is stored.
 3. Repeat for the other inputs.
 4. Now set SW4–SW0 to the unit you want to see. This doesn’t touch the stored inputs.
