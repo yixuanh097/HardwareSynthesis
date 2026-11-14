@@ -98,11 +98,14 @@ vector<vector<struct mux>> multiplexers(vector<vector<int>> adj_matrix, map<int,
     // remove all mux with only one input
     for (size_t k = 0; k < 3; k++)
     {
-        for (size_t i = 0; i < mux_list[k].size(); i++)
-        {
-            if (mux_list[k][i].in.size() <= 1)
-            {
+        //erase moves the next mux into slot i, 
+        //so i only advances past a mux that stays
+        for(size_t i = 0; i < mux_list[k].size();){
+            if(mux_list[k][i].in.size() <= 1){
                 mux_list[k].erase(mux_list[k].begin() + i);
+            }
+            else{
+                i++;
             }
         }
     }
