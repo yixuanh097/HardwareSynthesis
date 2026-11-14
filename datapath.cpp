@@ -1,27 +1,61 @@
 #include "datapath.h"
-vector<struct reg> registers(vector<vector<int>> adj_matrix, map<int, int> schedule)
-{
-    vector<struct reg> reg_list;
+#include <algorithm>
+#include <numeric>
 
-    // find all edges
-    size_t i, j;
+// values nothing reads: the results of the computation
+vector<int>results(vector<vector<int>>adj_matrix){
+    vector<int>result;
     size_t n = adj_matrix.size();
-    for (i = 0; i < n; i++)
-    {
-        for (j = 0; j < n; j++)
-        {
-            if (i != j && adj_matrix[i][j] == 1)
-            {
-                for (int k = schedule[i]; k < schedule[j]; k++)
-                {
-                    struct reg new_reg;
-                    new_reg.in = i;
-                    new_reg.out = j;
-                    new_reg.enable_time = k + 1;
-                    reg_list.push_back(new_reg);
-                }
+    for(size_t i = 0; i < n; i++){
+        bool read = false;
+        for(size_t j = 0; j < n; j++){
+            if(i != j && adj_matrix[i][j] == 1){
+                read = true;
             }
         }
+        if(!read){
+            result.push_back(i);
+        }
+    }
+    return result;
+}
+
+// a value is loaded into a register at the start of the cycle after the one that computes
+// it and is held through the last cycle that reads it; a result is held until the done
+// state. Registers are shared with the left-edge algorithm: the values in the order they
+// are loaded, each into the first register whose value has had its last read. That uses
+// as many registers as the most values alive at once.
+vector<struct reg>registers(vector<vector<int>>adj_matrix, map<int, int>schedule){
+    int n = adj_matrix.size(), done = total_cycle(schedule) + 1;
+    vector<int>last(n, -1); // last cycle that reads each value
+    for(int i = 0; i < n; i++){
+        for(int j = 0; j < n; j++){
+            if(i != j && adj_matrix[i][j] == 1){
+                last[i] = max(last[i], schedule[j]);
+            }
+        }
+    }
+    for(int node : results(adj_matrix)){
+        last[node] = done;
+    }
+
+    vector<int>order(n);
+    iota(order.begin(), order.end(), 0);
+    stable_sort(order.begin(), order.end(), [&](int a, int b){ return schedule[a] < schedule[b]; });
+    vector<struct reg>reg_list;
+    vector<int>busy; // last cycle that reads the value each register holds now
+    for(int node : order){
+        int load = schedule[node] + 1;
+        size_t r = 0;
+        while(r < reg_list.size() && busy[r] >= load){
+            r++;
+        }
+        if(r == reg_list.size()){
+            reg_list.emplace_back();
+            busy.push_back(0);
+        }
+        reg_list[r].load[load] = node;
+        busy[r] = last[node];
     }
     return reg_list;
 }
@@ -113,15 +147,11 @@ vector<vector<struct mux>> multiplexers(vector<vector<int>> adj_matrix, map<int,
 }
 
 // organize mux and reg events by cycle
-void sequencer(int cycle, vector<vector<struct mux>> mux_list, vector<struct reg> reg_list, vector<int> &active_reg, vector<map<int, int>> &active_mux)
-{
-    // active_reg stores register index that are enabled at time=cycle
-
-    for (size_t i = 0; i < reg_list.size(); i++)
-    {
-        if (reg_list[i].enable_time == cycle)
-        {
-            active_reg.push_back(i);
+void sequencer(int cycle, vector<vector<struct mux>>mux_list, vector<struct reg>reg_list, map<int, int>&active_reg, vector<map<int, int>>&active_mux){
+    // active_reg maps each register loaded at the start of this cycle to the node it loads
+    for(size_t r = 0; r < reg_list.size(); r++){
+        if(reg_list[r].load.count(cycle)){
+            active_reg[r] = reg_list[r].load[cycle];
         }
     }
 

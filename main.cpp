@@ -1,4 +1,5 @@
 #include "parse.h"
+#include <algorithm>
 #include <cstring>
 #include "schedule.h"
 #include "datapath.h"
@@ -90,16 +91,29 @@ int main(int argc, char *argv[])
     cout << "total cycles: " << cycles << endl
          << endl;
 
-    cout << "ASAP register list" << endl;
-    vector<struct reg> reg_list = registers(adj_mat, asap);
-    for (const auto &r : reg_list)
-    {
-        cout << "register input: " << dag[r.in].out << " , output: " << dag[r.out].out << " , enabled at time " << r.enable_time << endl;
+    // task 4 for the schedule named after --verilog, ASAP when there is none
+    map<string, map<int, int>>schedules = {{"asap", asap}, {"alap", alap}, {"fds", fds}, {"casap", constrained_asap}, {"calap", constrained_alap}};
+    map<string, string>titles = {{"asap", "ASAP"}, {"alap", "ALAP"}, {"fds", "force directed"}, {"casap", "constrained ASAP"}, {"calap", "constrained ALAP"}};
+    string shown = schedules.count(verilog) ? verilog : "asap";
+    map<int, int>schedule = schedules[shown];
+    vector<int>result = results(adj_mat);
+
+    cout << titles[shown] << " register list" << endl;
+    vector<struct reg>reg_list = registers(adj_mat, schedule);
+    for(size_t r = 0; r < reg_list.size(); r++){
+        cout << "register " << r << " loads";
+        string sep = " ";
+        for(const auto &[time, node] : reg_list[r].load){
+            bool kept = find(result.begin(), result.end(), node) != result.end();
+            cout << sep << dag[node].out << " at time " << time << (kept ? " (result)" : "");
+            sep = ", ";
+        }
+        cout << endl;
     }
     cout << endl;
 
-    cout << "ASAP mux list" << endl;
-    vector<vector<struct mux>> mux_list = multiplexers(adj_mat, asap);
+    cout << titles[shown] << " mux list" << endl;
+    vector<vector<struct mux>>mux_list = multiplexers(adj_mat, schedule);
     for (size_t i = 0; i < 3; i++)
     {
         cout << ops[i] << endl;
@@ -114,17 +128,16 @@ int main(int argc, char *argv[])
     }
     cout << endl;
 
-    cout << "sequencer FSM" << endl;
-    int asap_cycle = total_cycle(asap);
-    vector<int> active_reg;
-    vector<map<int, int>> active_mux;
-    for (int i = 0; i <= asap_cycle; i++)
-    {
-        cout << "cycle: " << i << endl;
+    cout << titles[shown] << " sequencer FSM" << endl;
+    int last_cycle = total_cycle(schedule);
+    map<int, int>active_reg;
+    vector<map<int, int>>active_mux;
+    // the state after the last cycle is the done state, where the last results are loaded
+    for(int i = 0; i <= last_cycle + 1; i++){
+        cout << "cycle: " << i << (i > last_cycle ? " (done)" : "") << endl;
         sequencer(i, mux_list, reg_list, active_reg, active_mux);
-        for (size_t j = 0; j < active_reg.size(); j++)
-        {
-            cout << "register " << active_reg[j] << " enabled for input " << reg_list[active_reg[j]].in << " and output " << reg_list[active_reg[j]].out << endl;
+        for(const auto &[r, node] : active_reg){
+            cout << "register " << r << " loads " << dag[node].out << endl;
         }
 
         for (int k = 0; k < 3; k++)
@@ -140,13 +153,10 @@ int main(int argc, char *argv[])
     }
 
     // tasks 5-8: Verilog for the schedule named after --verilog
-    map<string, map<int, int>> schedules = {{"asap", asap}, {"alap", alap}, {"fds", fds}, {"casap", constrained_asap}, {"calap", constrained_alap}};
-    if (schedules.count(verilog))
-    {
-        write_verilog(dag, schedules[verilog], registers(adj_mat, schedules[verilog]), verilog);
+    if(schedules.count(verilog)){
+        write_verilog(dag, schedule, reg_list, verilog);
     }
-    else if (!verilog.empty())
-    {
+    else if(!verilog.empty()){
         cout << "unknown schedule " << verilog << " (asap, alap, fds, casap or calap)" << endl;
     }
     return 0;

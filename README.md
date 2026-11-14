@@ -39,7 +39,8 @@ The executable runs the following pipeline:
    - Computes resource-constrained ASAP and ALAP schedules based on user-defined available units.
 
 4. **Datapath generation** (`datapath.cpp`)
-   - Inserts registers required between dependent operations based on DAG.
+   - Gives each value a register from the start of the cycle after the one that computes it through the last cycle that reads it. Values whose lifetimes don't overlap share a register (the left-edge algorithm), so the design uses as many registers as the most values alive at once.
+   - Keeps the results, the values nothing reads, in their registers until the done state.
    - Groups operation inputs into multiplexers, with at most one multiplexer per hardware unit. We assume that the multiplexers can take any number of input.
    - Produces per-cycle register and multiplexer events for the sequencer FSM.
 
@@ -104,9 +105,11 @@ The program prints:
 - SSA format in text file when requested
 - The dependency adjacency matrix
 - ASAP, ALAP, force-directed, constrained ASAP, and constrained ALAP schedules with (output name, cycle) pairs as well as total cycle time required
-- Register list with register input, output, and time enabled information
+- Register list with the values each register loads and the time each is loaded; results are marked
 - Multiplexer list for each hardware unit with mux input names and the time each input is selected 
-- Sequencer events grouped by cycle, specifically at each cycle how each reg and mux are configured
+- Sequencer events grouped by cycle, specifically at each cycle how each reg and mux are configured, up to the done state where the last results are loaded
+
+The register list, multiplexer list and sequencer events are for the schedule named after `--verilog`, or for ASAP without it.
 
 ## Tasks 5-8: Verilog and the Terasic C5G
 
@@ -124,9 +127,15 @@ The program prints:
 ./main input.txt --verilog asap   # or alap, fds, casap, calap
 ```
 
-This writes `generated/hls_core.v`, the synthesized design: a control-step counter (the sequencer), one operand multiplexer per functional unit, the task-4 registers, and exactly the adders, subtractors and multipliers the schedule uses. It also writes `generated/testbench.v`, which checks every operation's result on its unit in its cycle, and prints the unit numbers and the expected unit outputs for the hardcoded inputs.
+This writes `generated/hls_core.v`, the synthesized design, as three modules:
 
-The datapath is 8 bits: two hex digits show a value, and results wrap modulo 256. Inputs start at hardcoded values (2, 3, 4, ... in order of first use); the first sixteen can be changed from the switches with 6-bit values (0-63), which leaves four switches to pick the input. Each value shows on its unit during the cycle that computes it.
+- `hls_ctrl`, the sequencer FSM. Its state is the control step, and its outputs depend only on the state: a select for every functional-unit input, a write-enable for every register, an input select for every register that loads from more than one unit, and `done`.
+- `hls_datapath`: the input registers, the shared task-4 registers, the multiplexers, and exactly the adders, subtractors and multipliers the schedule uses. Only `hls_ctrl`'s signals drive it.
+- `hls_core`, which connects the two and has the ports `hdl/top.v` uses.
+
+It also writes `generated/testbench.v`, which checks every operation's result on its unit in its cycle and every result once the run is done, and prints the unit and result numbers and the expected outputs for the hardcoded inputs.
+
+The datapath is 8 bits: two hex digits show a value, and results wrap modulo 256. Inputs start at hardcoded values (2, 3, 4, ... in order of first use); the first sixteen can be changed from the switches with 6-bit values (0-63), which leaves four switches to pick the input. Each value shows on its unit during the cycle that computes it, and once the run is done each result shows on its own number.
 
 Simulate:
 
@@ -160,11 +169,11 @@ Each switch is 0 when down (toward the edge of the board) and 1 when up. A group
 | KEY0 | go to the next cycle |
 | KEY1 | load the number on SW5-SW0 (0-63) into the input numbered by SW9-SW6 |
 | KEY4 (CPU_RESET_n) | back to cycle 0 with the hardcoded inputs |
-| SW4-SW0 | number of the unit shown on HEX1-HEX0 |
+| SW4-SW0 | number of the unit or result shown on HEX1-HEX0 |
 | HEX3-HEX2 | current cycle |
-| HEX1-HEX0 | output of the selected unit in hex; 00 if it computes nothing this cycle |
+| HEX1-HEX0 | output of the selected unit in hex, 00 if it computes nothing this cycle; or the selected result, 00 until the run is done |
 
-Units are numbered adders first, then subtractors, then multipliers, and inputs in order of first use; `./main` prints both lists (`SW[4:0] unit:` and `SW[9:6] input:`). In the example under Input format, unit 0 is the adder (SW4-SW0 all down), 1 the subtractor (only SW0 up) and 2 the multiplier (only SW1 up); input 0 is A (SW9-SW6 all down) and 1 is B (only SW6 up).
+Units are numbered adders first, then subtractors, then multipliers, and inputs in order of first use; `./main` prints both lists (`SW[4:0] unit:` and `SW[9:6] input:`). Results, the values nothing reads, are numbered after the units in the order of the input file, and `./main` lists them as `SW[4:0] result, once done:`. In the example under Input format, unit 0 is the adder (SW4-SW0 all down), 1 the subtractor (only SW0 up) and 2 the multiplier (only SW1 up); result 3 is Y (SW1 and SW0 up) and 4 is Q (only SW2 up); input 0 is A (SW9-SW6 all down) and 1 is B (only SW6 up).
 
 SW4-SW0 change the display as soon as they move; the switches are read for a load only when KEY1 is pressed. Because SW4-SW0 are part of both, the display can show another unit, or 00, while a value is set. Load inputs after KEY4 and before the first KEY0, since KEY4 restores the hardcoded inputs.
 
@@ -174,13 +183,14 @@ SW4-SW0 change the display as soon as they move; the switches are read for a loa
 2. On Linux, run `make`, then `./main input.txt --verilog asap` (or alap, fds, casap, calap).
 3. Note from the end of its output:
    - `SW[4:0] unit:`, the SW4-SW0 number of each unit, for example `0=add0 1=sub0 2=mul0`
+   - `SW[4:0] result, once done:`, the SW4-SW0 number of each result, for example `3=Y0 4=Q0`
    - `SW[9:6] input:`, the SW9-SW6 number of each input, for example `0=A0 1=B0`
-   - the expected outputs, one line per operation, for example `cycle 1, unit 1: Z0 = 02`
+   - the expected outputs, one line per operation and one per result, for example `cycle 1, unit 1: Z0 = 02` and `done, result 4: Q0 = 06`
 4. Compile, convert, copy, and flash with the commands above.
 5. Put every switch down and press KEY4. HEX3-HEX2 show 00.
 6. Optional: for each input to change, set SW9-SW6 to its number and SW5-SW0 to its value, then press KEY1. Work out the new expected outputs by hand.
 7. For each expected output of the current cycle, set SW4-SW0 to its unit number and check HEX1-HEX0.
-8. Press KEY0 and repeat step 7 for the next cycle. One press after the last expected cycle ends the run, and every unit then shows 00.
+8. Press KEY0 and repeat step 7 for the next cycle. One press after the last expected cycle ends the run: every unit then shows 00, and each result shows on its number from step 3.
 
 # Runtime steps
 
@@ -189,7 +199,8 @@ SW4-SW0 change the display as soon as they move; the switches are read for a loa
 3. Repeat for the other inputs.
 4. Now set SW4–SW0 to the unit you want to see. This doesn’t touch the stored inputs.
 5. Step with KEY0.
-6. Reset with KEY4
+6. After the last step, set SW4–SW0 to a result's number to see it.
+7. Reset with KEY4
 
 Steps 5-8 for the example under Input format with the hardcoded inputs (A = 2, B = 3):
 
@@ -200,6 +211,8 @@ Steps 5-8 for the example under Input format with the hardcoded inputs (A = 2, B
 | 01 | SW0 | subtractor | 02 | Z = X - B = 5 - 3 |
 | 02 (press KEY0) | SW1 | multiplier | 06 | Q = B * Z = 3 * 2 |
 | 03 (press KEY0) | none | | 00 | done |
+| 03 | SW1, SW0 | result Y | 07 | Y = 7 |
+| 03 | SW2 | result Q | 06 | Q = 6 |
 
 The same example with A = 7 and B = 4 loaded in step 6 (only the listed switches are up):
 
@@ -213,6 +226,8 @@ The same example with A = 7 and B = 4 loaded in step 6 (only the listed switches
 | 6 | SW0 | | 0107 | subtractor, cycle 1: Z = 11 - 4 = 7 |
 | 7 | SW1 | KEY0 | 021C | multiplier, cycle 2: Q = 4 * 7 = 28 |
 | 8 | none | KEY0 | 0300 | done |
+| 9 | SW1, SW0 | | 0312 | result Y = 18 |
+| 10 | SW2 | | 031C | result Q = 28 |
 
 ## 30-minute demo plan
 

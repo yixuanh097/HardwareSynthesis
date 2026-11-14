@@ -1,7 +1,7 @@
 // Terasic C5G top level
 //   KEY[0] step one control step         KEY[1] load SW[5:0] into input SW[9:6]
-//   SW[4:0] unit shown on HEX1-HEX0      CPU_RESET_n restart with the hardcoded inputs
-//   HEX3-HEX2 control step, HEX1-HEX0 unit output (hex)
+//   SW[4:0] unit or result on HEX1-HEX0  CPU_RESET_n restart with the hardcoded inputs
+//   HEX3-HEX2 control step, HEX1-HEX0 unit output or result (hex)
 module top (
     input CLOCK_50_B5B, CPU_RESET_n,
     input [1:0] KEY,
