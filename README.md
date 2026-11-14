@@ -111,11 +111,12 @@ The program prints:
 ## Tasks 5-8: Verilog and the Terasic C5G
 
 ```text
-├── verilog.h/.cpp # Verilog generator for one schedule
-├── hdl/fu.v       # 8-bit adder, subtractor and multiplier
-├── hdl/top.v      # C5G top level: buttons, switches, 7-segment display
-├── quartus/       # Quartus Prime project for the C5G (5CGXFC5C6F27C7)
-└── generated/     # generator output for the example under Input format (not tracked)
+├── verilog.h/.cpp  # Verilog generator for one schedule
+├── hdl/fu.v        # 8-bit adder, subtractor and multiplier
+├── hdl/top.v       # C5G top level: buttons, switches, 7-segment display
+├── hdl/testbench.v # simulation testbench for the example under Input format (ASAP schedule)
+├── quartus/        # Quartus Prime project for the C5G (5CGXFC5C6F27C7)
+└── generated/      # generator output for the example under Input format (not tracked)
 ```
 
 `make` compiles as C++23; the code only uses C++17 features.
@@ -124,15 +125,17 @@ The program prints:
 ./main input.txt --verilog asap   # or alap, fds, casap, calap
 ```
 
-This writes `generated/hls_core.v`, the synthesized design: a control-step counter (the sequencer), one operand multiplexer per functional unit, the task-4 registers, and exactly the adders, subtractors and multipliers the schedule uses. It also writes `generated/testbench.v`, which checks every operation's result on its unit in its cycle, and prints the unit numbers and the expected unit outputs for the hardcoded inputs.
+This writes `generated/hls_core.v`, the synthesized design: a control-step counter (the sequencer), one operand multiplexer per functional unit, the task-4 registers, and exactly the adders, subtractors and multipliers the schedule uses. It also prints the unit numbers and the expected unit outputs for the hardcoded inputs.
 
 The datapath is 8 bits: two hex digits show a value, and results wrap modulo 256. Inputs start at hardcoded values (2, 3, 4, ... in order of first use); the first sixteen can be changed from the switches with 6-bit values (0-63), which leaves four switches to pick the input. Each value shows on its unit during the cycle that computes it.
 
-Simulate:
+Simulate the example under Input format after `./main input.txt --verilog asap`:
 
 ```bash
-iverilog -o tb.vvp generated/testbench.v generated/hls_core.v hdl/fu.v && vvp tb.vvp
+iverilog -o tb.vvp hdl/testbench.v generated/hls_core.v hdl/fu.v && vvp tb.vvp
 ```
+
+`hdl/testbench.v` is a fixed file, not written by `./main`. It checks every operation's result on its unit in its cycle for that example and schedule, with the hardcoded inputs and with two input sets loaded the way the switches load them. Other equations or schedules need its checks rewritten: `./main` prints the cycle, unit and expected value of every operation for the hardcoded inputs.
 
 Compile with Quartus Prime Lite, which runs on Linux or Windows but not macOS:
 

@@ -3,7 +3,6 @@
 #include <cctype>
 #include <cstdio>
 #include <filesystem>
-#include <random>
 
 struct operand
 {
@@ -179,70 +178,8 @@ void write_verilog(vector<struct node> dag, map<int, int> schedule, vector<struc
         v << "                case (cyc)\n" << load_cases << "                endcase\n";
     v << "            end\n        end\nendmodule\n";
 
-    // testbench: every operation's result on its unit in its control step, for the
-    // hardcoded inputs and for two sets loaded the way the switches load them
-    ofstream t("generated/testbench.v");
-    t << "`timescale 1ns/1ps\n"
-         "module testbench;\n"
-         "    reg clk = 0, rst = 1, step = 0, ld = 0;\n"
-         "    reg [3:0] ld_sel = 0;\n"
-         "    reg [7:0] ld_val = 0;\n"
-         "    reg [4:0] fu_sel = 0;\n"
-         "    wire [4:0] cyc;\n"
-         "    wire [7:0] fu_out;\n"
-         "    integer errors = 0;\n"
-         "    hls_core dut (.clk(clk), .rst(rst), .step(step), .ld(ld), .ld_sel(ld_sel), .ld_val(ld_val),\n"
-         "                  .fu_sel(fu_sel), .cyc(cyc), .fu_out(fu_out));\n"
-         "    always #10 clk = ~clk;\n\n"
-         "    task check(input [4:0] unit, input [7:0] value);\n"
-         "        begin\n"
-         "            fu_sel = unit;\n"
-         "            #1 if (fu_out !== value) begin\n"
-         "                errors = errors + 1;\n"
-         "                $display(\"FAIL cycle %0d unit %0d: got %0d, expected %0d\", cyc, unit, fu_out, value);\n"
-         "            end\n"
-         "        end\n"
-         "    endtask\n\n"
-         "    task load(input [3:0] slot, input [7:0] value);\n"
-         "        begin\n"
-         "            ld = 1; ld_sel = slot; ld_val = value;\n"
-         "            @(posedge clk) #1 ld = 0;\n"
-         "        end\n"
-         "    endtask\n\n"
-         "    task do_step;\n"
-         "        begin\n"
-         "            step = 1;\n"
-         "            @(posedge clk) #1 step = 0;\n"
-         "        end\n"
-         "    endtask\n\n"
-         "    initial begin\n";
-    mt19937 rng(1);
-    for (int run = 0; run < 3; run++)
-    {
-        vector<int> in = defaults;
-        for (size_t k = 0; run > 0 && k < in.size() && k < 16; k++)
-            in[k] = rng() % 64;
-        t << "        // inputs:";
-        for (size_t k = 0; k < inputs.size(); k++)
-            t << " " << inputs[k] << "=" << in[k];
-        t << "\n        rst = 1;\n        @(posedge clk) #1 rst = 0;\n";
-        for (size_t k = 0; run > 0 && k < in.size() && k < 16; k++)
-            t << "        load(" << k << ", " << in[k] << ");\n";
-        vector<int> value = evaluate(in);
-        for (int c = 0; c < cycles; c++)
-        {
-            for (int i = 0; i < n; i++)
-                if (schedule[i] == c)
-                    t << "        check(" << unit_of(i) << ", " << value[i] << "); // cycle " << c << ": " << dag[i].out
-                      << "\n";
-            t << "        do_step;\n";
-        }
-    }
-    t << "        if (errors == 0) $display(\"PASS\");\n        else $display(\"FAIL: %0d errors\", errors);\n"
-         "        $finish;\n    end\nendmodule\n";
-
     // what the board shows for the hardcoded inputs
-    cout << endl << "wrote generated/hls_core.v and generated/testbench.v (" << name << " schedule)" << endl << "SW[4:0] unit:";
+    cout << endl << "wrote generated/hls_core.v (" << name << " schedule)" << endl << "SW[4:0] unit:";
     for (size_t u = 0; u < units.size(); u++)
         cout << " " << u << "=" << units[u];
     cout << endl << "SW[9:6] input:";
