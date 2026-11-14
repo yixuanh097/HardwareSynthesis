@@ -13,7 +13,7 @@ The project is currently organized as a single-source-directory repository:
 ├── schedule.h/.cpp# Dependency DAG and operation scheduling
 ├── datapath.h/.cpp
 │                  # Register, multiplexer, and sequencer information generation
-├── input.txt/input2.txt      # Example arithmetic input
+├── input.txt      # Example arithmetic input
 
 ```
 
@@ -115,7 +115,7 @@ The program prints:
 ├── hdl/fu.v       # 8-bit adder, subtractor and multiplier
 ├── hdl/top.v      # C5G top level: buttons, switches, 7-segment display
 ├── quartus/       # Quartus Prime project for the C5G (5CGXFC5C6F27C7)
-└── generated/     # generator output for the example under Input format (asap)
+└── generated/     # generator output for the example under Input format (not tracked)
 ```
 
 `make` compiles as C++23; the code only uses C++17 features.
