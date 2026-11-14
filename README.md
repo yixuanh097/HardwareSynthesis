@@ -167,11 +167,11 @@ Each switch is 0 when down (toward the edge of the board) and 1 when up. A group
 | HEX3-HEX2 | current cycle |
 | HEX1-HEX0 | output of the selected unit in hex; 00 if it computes nothing this cycle |
 
-Units are numbered adders first, then subtractors, then multipliers, and inputs in order of first use; `./main` prints both lists (`SW[4:0] unit:` and `SW[9:6] input:`). In the example under Input format, unit 0 is the adder (SW4-SW0 all down), 1 the subtractor (only SW0 up) and 2 the multiplier (only SW1 up); input 0 is A (SW9-SW6 all down) and 1 is B (only SW6 up).
-
-SW4-SW0 change the display as soon as they move; the switches are read for a load only when KEY1 is pressed. Because SW4-SW0 are part of both, the display can show another unit, or 00, while a value is set. Load inputs after KEY4 and before the first KEY0, since KEY4 restores the hardcoded inputs.
-
 ### Checklist for running equations on the board
+
+SW4-SW0 change the display as soon as they move; the switches are read for a load only when KEY1 is pressed.
+
+Load inputs after KEY4 and before the first KEY0, since KEY4 restores the hardcoded inputs.
 
 1. Write the equations into input file with optional `+:N`, `-:N` and `*:N` limits.
 2. On Linux, run `make`, then `./main input.txt --verilog asap` (or alap, fds, casap, calap).
@@ -191,40 +191,17 @@ SW4-SW0 change the display as soon as they move; the switches are read for a loa
 2. Press KEY1. The value is stored.
 3. Repeat for the other inputs.
 4. Now set SW4–SW0 to the unit you want to see. This doesn’t touch the stored inputs.
-5. Step with KEY0.
-6. Reset with KEY4
-
-Steps 5-8 for the example under Input format with the hardcoded inputs (A = 2, B = 3):
-
-| Cycle | Switches up | Unit | HEX1-HEX0 | Operation |
-|---|---|---|---|---|
-| 00 | none | adder | 05 | X = A + B = 2 + 3 |
-| 01 (press KEY0) | none | adder | 07 | Y = X + A = 5 + 2 |
-| 01 | SW0 | subtractor | 02 | Z = X - B = 5 - 3 |
-| 02 (press KEY0) | SW1 | multiplier | 06 | Q = B * Z = 3 * 2 |
-| 03 (press KEY0) | none | | 00 | done |
-
-The same example with A = 7 and B = 4 loaded in step 6 (only the listed switches are up):
-
-| Step | Switches up | Press | Display | Meaning |
-|---|---|---|---|---|
-| 1 | none | KEY4 | 0005 | A = 2, B = 3 |
-| 2 | SW2, SW1, SW0 | KEY1 | 0000 | A = 4 + 2 + 1 = 7 |
-| 3 | SW6, SW2 | KEY1 | 0000 | B = 4 |
-| 4 | none | | 000b | adder, cycle 0: X = 7 + 4 = 11 |
-| 5 | none | KEY0 | 0112 | adder, cycle 1: Y = 11 + 7 = 18 |
-| 6 | SW0 | | 0107 | subtractor, cycle 1: Z = 11 - 4 = 7 |
-| 7 | SW1 | KEY0 | 021C | multiplier, cycle 2: Q = 4 * 7 = 28 |
-| 8 | none | KEY0 | 0300 | done |
+5. Step with KEY0. HEX3-HEX2 is the cycle and HEX1-HEX0 is the output of the selected computational unit (select 0 for add, 1 for subtract, and 2 for multiply).
+7. Reset with KEY4
 
 ## 30-minute demo plan
 
 | Time | Plan |
 |---|---|
 | 0-5 | Repository layout and pipeline: parse, SSA, DAG, schedules, datapath, Verilog |
-| 5-10 | Example under Input format: `./main input.txt --export-ssa`, then `./main input.txt --verilog asap`; walk through `generated/hls_core.v` and run the testbench |
-| 10-13 | Board with the example: step with KEY0, pick units with SW4-SW0, compare with the printed values |
-| 13-28 | Three runs with the professor's equations, 5 minutes each |
+| 5-10 | Example under Input format: `./main input.txt --export-ssa`, then `./main input.txt --verilog asap`; and run the testbench |
+| 10-13 | Board with the example, and compare with the printed values |
+| 13-28 | Runs with the professor's equations. |
 | 28-30 | Questions |
 
 Each run: the professor writes the equations and picks a schedule type, and the code is run on the board.
