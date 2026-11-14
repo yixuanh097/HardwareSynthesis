@@ -17,6 +17,8 @@ The project is currently organized as a single-source-directory repository:
 
 ```
 
+Sample input.txt is included in the repo for reference, but generated files are not.
+
 ## Synthesis tool architecture
 
 The executable runs the following pipeline:
@@ -47,6 +49,7 @@ datapath/sequencer information.
 
 ## Build
 
+This build uses clang on mac and gcc on linux.
 
 The repository includes a `Makefile` for the project build configuration, can build with
 

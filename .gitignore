@@ -3,3 +3,6 @@ main
 *.o
 *.vvp
 quartus/*/
+
+generated/
+!/input*.txt
