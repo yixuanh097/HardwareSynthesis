@@ -192,7 +192,7 @@ Load inputs after KEY4 and before the first KEY0, since KEY4 restores the hardco
 3. Repeat for the other inputs.
 4. Now set SW4–SW0 to the unit you want to see. This doesn’t touch the stored inputs.
 5. Step with KEY0. HEX3-HEX2 is the cycle and HEX1-HEX0 is the output of the selected computational unit (select 0 for add, 1 for subtract, and 2 for multiply).
-7. Reset with KEY4
+6. Reset with KEY4
 
 ## 30-minute demo plan
 
